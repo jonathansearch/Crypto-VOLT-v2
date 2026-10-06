@@ -1,23 +1,23 @@
-# VOLT v2.1.0-hardened — Spécification Technique de Référence
-### Protocole de Chiffrement Hybride Post-Quantique — Grade Production Durci
+# VOLT v2.1.0-hardened — Reference Technical Specification
+### Post-Quantum Hybrid Encryption Protocol — Hardened Production Grade
 
 ---
 
-| Champ                    | Valeur                                                              |
+| Field                    | Value                                                               |
 | :----------------------- | :------------------------------------------------------------------ |
-| **Titre industriel**     | VOLT v2 — Hybrid Post-Quantum Encryption Protocol                   |
-| **Révision**             | 2.1.0-hardened                                                      |
-| **Auteur**               | Jonathan Evina (Sama)                                               |
-| **Organisation**         | RATISS LABS                                                         |
-| **Date de publication**  | Juin 2026                                                           |
-| **Licence**              | Apache License, Version 2.0                                         |
+| **Industrial title**     | VOLT v2 — Hybrid Post-Quantum Encryption Protocol                   |
+| **Revision**             | 2.1.0-hardened                                                      |
+| **Author**               | Jonathan Evina (Sama)                                               |
+| **Organization**         | RATISS LABS                                                         |
+| **Publication date**     | June 2026                                                           |
+| **License**              | Apache License, Version 2.0                                         |
 | **DOI**                  | https://doi.org/10.5281/zenodo.20701141              |
-| **Dépôt Source**         |bridejackson137 |                             |
-| **Statut**               | Production-Grade — Conforme NIST 2024 — Audit Sécurité Validé      |
+| **Source repository**    | jonathansearch |                             |
+| **Status**               | Production-Grade — NIST 2024 Compliant — Security Audit Validated   |
 
 ---
 
-**NOTICE DE COPYRIGHT OFFICIELLE**
+**OFFICIAL COPYRIGHT NOTICE**
 
 ```
 Copyright 2026 Jonathan Evina (Sama) — RATISS LABS
@@ -35,37 +35,37 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-Toute redistribution ou modification doit conserver intégralement cette notice et indiquer
-explicitement les modifications apportées, conformément à la Section 4 de l'Apache License 2.0.
+Any redistribution or modification must keep this notice in full and explicitly
+state the changes made, in accordance with Section 4 of the Apache License 2.0.
 
 ---
 
-## Table des Matières
+## Table of Contents
 
-1. [Rapport d'Audit et Sécurisation v2.1.0](#1-rapport-daudit-et-sécurisation-v210)
-2. [Cartographie des Primitives NIST](#2-cartographie-des-primitives-nist)
-3. [Architecture Visuelle des Flux](#3-architecture-visuelle-des-flux)
-4. [Architecture de l'Anchor Key System](#4-architecture-de-lanchor-key-system)
-5. [Structure Binaire Strict-Frame](#5-structure-binaire-strict-frame)
-6. [Guide d'Intégration et Exemple Prêt à l'Emploi](#6-guide-dintégration-et-exemple-prêt-à-lemploi)
-
----
-
-## 1. Rapport d'Audit et Sécurisation v2.1.0
-
-Ce rapport documente de manière exhaustive les cinq vulnérabilités identifiées lors de
-l'audit de sécurité interne de la version 2.0.0, leurs vecteurs d'exploitation potentiels,
-et les corrections implémentées dans la révision 2.1.0-hardened. Chaque correctif est
-classifié par niveau de sévérité selon l'échelle RATISS LABS.
+1. [Audit Report and Security Hardening v2.1.0](#1-audit-report-and-security-hardening-v210)
+2. [NIST Primitive Mapping](#2-nist-primitive-mapping)
+3. [Visual Flow Architecture](#3-visual-flow-architecture)
+4. [Anchor Key System Architecture](#4-anchor-key-system-architecture)
+5. [Strict-Frame Binary Structure](#5-strict-frame-binary-structure)
+6. [Integration Guide and Ready-to-Use Example](#6-integration-guide-and-ready-to-use-example)
 
 ---
 
-### FAILLE 1 — CRITIQUE | Blocage du Mode Dégradé Silencieux
+## 1. Audit Report and Security Hardening v2.1.0
 
-#### Vecteur d'Exploitation (v2.0.0)
+This report exhaustively documents the five vulnerabilities identified during the
+internal security audit of version 2.0.0, their potential exploitation vectors,
+and the fixes implemented in the 2.1.0-hardened revision. Each fix is classified
+by severity level according to the RATISS LABS scale.
 
-Dans la version originale, chaque implémentation concrète (`LiboqsKEM`, `LiboqsSignature`,
-`ProductionAESGCM`) comportait un bloc conditionnel de la forme :
+---
+
+### FLAW 1 — CRITICAL | Blocking of the Silent Degraded Mode
+
+#### Exploitation Vector (v2.0.0)
+
+In the original version, each concrete implementation (`LiboqsKEM`, `LiboqsSignature`,
+`ProductionAESGCM`) contained a conditional block of the form:
 
 ```python
 if oqs is None or KeyEncapsulation is None:
@@ -75,34 +75,32 @@ if oqs is None or KeyEncapsulation is None:
     return EncapsulationResult(ct, ss)
 ```
 
-Si la bibliothèque `liboqs-python` était absente de l'environnement Python (cas fréquent
-en déploiement rapide ou en conteneur léger), le moteur basculait **silencieusement** sur
-des substituts non-conformes :
+If the `liboqs-python` library was absent from the Python environment (a frequent
+occurrence in quick deployments or lightweight containers), the engine would
+**silently** fall back to non-compliant substitutes:
 
-- **KEM (Kyber768) :** Remplacé par un ciphertext aléatoire `os.urandom(1088)` et un
-  secret partagé `SHA256(public_key)` — déterministe, prévisible, **cryptographiquement nul**.
-- **Signature (Dilithium3) :** Remplacée par `HMAC-SHA256(private_key, message)` — un
-  MAC symétrique qui ne fournit aucune non-répudiation et est trivialmente forgeable par
-  quiconque connaît la clé.
-- **Chiffrement symétrique (AES-256-GCM) :** Remplacé par un XOR avec un keystream
-  SHA256 itératif — un chiffrement de substitution ne bénéficiant d'aucune propriété AEAD
-  formelle.
+- **KEM (Kyber768):** Replaced by a random ciphertext `os.urandom(1088)` and a
+  shared secret `SHA256(public_key)` — deterministic, predictable, **cryptographically worthless**.
+- **Signature (Dilithium3):** Replaced by `HMAC-SHA256(private_key, message)` — a
+  symmetric MAC providing no non-repudiation and trivially forgeable by anyone
+  who knows the key.
+- **Symmetric encryption (AES-256-GCM):** Replaced by a XOR with an iterative
+  SHA256 keystream — a substitution cipher with no formal AEAD property whatsoever.
 
-L'utilisateur ne recevait **aucun avertissement**. Les données étaient présentées comme
-chiffrées alors qu'elles ne bénéficiaient d'aucune protection post-quantique, ni même
-d'une protection classique robuste.
+The user received **no warning**. Data was presented as encrypted while it enjoyed
+no post-quantum protection, not even robust classical protection.
 
-#### Correction Implémentée (v2.1.0)
+#### Fix Implemented (v2.1.0)
 
-Introduction d'un flag de contrôle d'exécution évalué **au chargement du module**, avant
-toute instanciation de classe :
+Introduction of a runtime control flag evaluated **at module load time**, before
+any class instantiation:
 
 ```python
 _PRODUCTION_MODE: bool = os.environ.get('VOLT_ALLOW_DEGRADED', '0').strip() != '1'
 ```
 
-En mode production (valeur par défaut), une vérification de disponibilité est effectuée
-immédiatement après l'import conditionnel des bibliothèques :
+In production mode (default value), an availability check is performed immediately
+after the conditional import of the libraries:
 
 ```python
 if _PRODUCTION_MODE:
@@ -123,9 +121,9 @@ if _PRODUCTION_MODE:
         )
 ```
 
-La fonction interne `_assert_production_primitive()` est appelée dans chaque méthode
-concrète avant tout traitement, garantissant qu'aucune opération cryptographique ne peut
-s'exécuter sur un fallback non-conforme sans consentement explicite :
+The internal function `_assert_production_primitive()` is called in each concrete
+method before any processing, guaranteeing that no cryptographic operation can run
+on a non-compliant fallback without explicit consent:
 
 ```python
 def _assert_production_primitive(lib_name: str, available: bool) -> None:
@@ -143,25 +141,25 @@ def _assert_production_primitive(lib_name: str, available: bool) -> None:
         )
 ```
 
-**Le mode dégradé ne peut être activé que par `export VOLT_ALLOW_DEGRADED=1`, est
-réservé aux environnements de test isolés, et émet un `SecurityWarning` visible à chaque
-opération. Il n'est en aucun cas silencieux.**
+**The degraded mode can only be enabled via `export VOLT_ALLOW_DEGRADED=1`, is
+reserved for isolated test environments, and emits a visible `SecurityWarning` at
+every operation. It is never silent under any circumstances.**
 
-| État de l'environnement             | v2.0.0                            | v2.1.0-hardened                        |
+| Environment state                    | v2.0.0                            | v2.1.0-hardened                        |
 | :---------------------------------- | :-------------------------------- | :------------------------------------- |
-| `liboqs` présent                    | Primitives NIST actives           | Primitives NIST actives                |
-| `liboqs` absent, `VOLT_ALLOW_DEGRADED` non défini | Fallback silencieux SHA256/XOR | `RuntimeError` immédiat à l'import |
-| `liboqs` absent, `VOLT_ALLOW_DEGRADED=1` | Fallback silencieux SHA256/XOR | Fallback actif + `SecurityWarning` visible |
+| `liboqs` present                     | NIST primitives active            | NIST primitives active                 |
+| `liboqs` absent, `VOLT_ALLOW_DEGRADED` unset | Silent SHA256/XOR fallback | Immediate `RuntimeError` at import |
+| `liboqs` absent, `VOLT_ALLOW_DEGRADED=1` | Silent SHA256/XOR fallback | Active fallback + visible `SecurityWarning` |
 
 ---
 
-### FAILLE 2 — CRITIQUE | Gestion des Secrets en RAM (SecretBuffer)
+### FLAW 2 — CRITICAL | Secrets Management in RAM (SecretBuffer)
 
-#### Vecteur d'Exploitation (v2.0.0)
+#### Exploitation Vector (v2.0.0)
 
-Les secrets cryptographiques les plus sensibles du pipeline — `shared_secret` (le secret
-partagé Kyber768) et `mac_key` (la clé HMAC dérivée) — étaient alloués comme objets
-`bytes` Python standard :
+The most sensitive cryptographic secrets of the pipeline — `shared_secret` (the
+Kyber768 shared secret) and `mac_key` (the derived HMAC key) — were allocated as
+standard Python `bytes` objects:
 
 ```python
 # Dans VOLTProtocolEngine.encrypt() — v2.0.0
@@ -169,28 +167,28 @@ shared_secret = kem_res.shared_secret           # objet bytes Python
 mac_key = hashlib.sha256(shared_secret).digest() # second objet bytes Python
 ```
 
-Les objets `bytes` Python sont **immuables**. Leur contenu ne peut pas être modifié
-directement. La désallocation est gérée par le garbage collector Python de manière
-**non-déterministe** : un objet `bytes` peut persister en RAM plusieurs secondes, minutes,
-ou jusqu'à l'extinction du processus après sa sortie de portée logique.
+Python `bytes` objects are **immutable**. Their content cannot be modified
+directly. Deallocation is handled by the Python garbage collector in a
+**non-deterministic** way: a `bytes` object can persist in RAM for seconds, minutes,
+or until the process shuts down after going out of logical scope.
 
-Vecteurs d'exploitation concrets :
-- **Analyse forensique de la RAM :** Sur un système compromis, un attaquant peut scanner
-  les pages mémoire du processus Python à la recherche de patterns de 32 octets
-  correspondant à des clés AES ou des secrets KEM.
-- **Core dump :** Un crash du processus produit un fichier core dump contenant l'intégralité
-  de la mémoire du processus, incluant les secrets non-effacés.
-- **Swap OS :** Sans chiffrement complet du disque (FDE), les pages mémoire swappées
-  persistent en clair sur le disque, incluant les zones contenant les secrets.
-- **Attaque Cold Boot :** Sur hardware physique accessible, la RAM conserve son contenu
-  quelques secondes après extinction — suffisant pour extraire des secrets actifs.
+Concrete exploitation vectors:
+- **RAM forensics analysis:** On a compromised system, an attacker can scan the
+  memory pages of the Python process looking for 32-byte patterns corresponding
+  to AES keys or KEM secrets.
+- **Core dump:** A process crash produces a core dump file containing the entire
+  process memory, including the non-erased secrets.
+- **OS swap:** Without full disk encryption (FDE), swapped memory pages persist
+  in plaintext on disk, including the zones containing the secrets.
+- **Cold Boot attack:** On physically accessible hardware, RAM retains its content
+  for a few seconds after power-off — enough time to extract active secrets.
 
-#### Correction Implémentée (v2.1.0) — Classe `SecretBuffer`
+#### Fix Implemented (v2.1.0) — `SecretBuffer` Class
 
-Introduction d'un gestionnaire de contexte dédié à la protection des secrets en mémoire.
-`SecretBuffer` encapsule un secret dans un `bytearray` mutable et appelle
-`ctypes.memset()` directement sur l'adresse mémoire physique du buffer, contournant
-l'immuabilité Python et le GC :
+Introduction of a context manager dedicated to protecting secrets in memory.
+`SecretBuffer` encapsulates a secret in a mutable `bytearray` and calls
+`ctypes.memset()` directly on the physical memory address of the buffer, bypassing
+Python immutability and the GC:
 
 ```python
 class SecretBuffer:
@@ -231,7 +229,7 @@ class SecretBuffer:
         self._zero()   # Sécurité de dernier recours à la destruction de l'objet
 ```
 
-**Intégration dans le pipeline de chiffrement :**
+**Integration into the encryption pipeline:**
 
 ```python
 # Dans VOLTProtocolEngine.encrypt() — v2.1.0
@@ -245,37 +243,38 @@ with SecretBuffer(kem_res.shared_secret) as raw_secret:
         mac_key = bytes(raw_mac_key)
         full_payload = payload_body + signature_value
         hmac_value = self.mac.compute(full_payload, mac_key)
-    # ← mac_key écrasé ici par ctypes.memset() à la sortie du with interne
-# ← shared_secret écrasé ici par ctypes.memset() à la sortie du with externe
+    # ← mac_key overwritten here by ctypes.memset() when the inner with-block exits
+# ← shared_secret overwritten here by ctypes.memset() when the outer with-block exits
 ```
 
-**Mécanisme technique détaillé :**
+**Detailed technical mechanism:**
 
-1. `bytearray(data)` alloue un buffer mutable en mémoire contiguë.
-2. `ctypes.c_char * self._length` crée un type C de taille exacte.
-3. `.from_buffer(self._buf)` obtient un pointeur vers l'adresse mémoire réelle du buffer
-   sans copie — opération zero-copy sur le buffer Python existant.
-4. `ctypes.addressof(...)` extrait l'adresse mémoire physique brute.
-5. `ctypes.memset(addr, 0, self._length)` écrase chaque octet du buffer avec `0x00`
-   au niveau C, hors portée du runtime Python et du GC.
+1. `bytearray(data)` allocates a mutable buffer in contiguous memory.
+2. `ctypes.c_char * self._length` creates a C type of exact size.
+3. `.from_buffer(self._buf)` obtains a pointer to the actual memory address of the
+   buffer without copying — a zero-copy operation on the existing Python buffer.
+4. `ctypes.addressof(...)` extracts the raw physical memory address.
+5. `ctypes.memset(addr, 0, self._length)` overwrites each byte of the buffer with
+   `0x00` at the C level, outside the reach of the Python runtime and the GC.
 
-La méthode `__del__` garantit l'effacement même si le gestionnaire de contexte n'est
-pas utilisé correctement, ajoutant une couche de sécurité de dernier recours.
+The `__del__` method guarantees erasure even if the context manager is not used
+correctly, adding a last-resort layer of security.
 
-**Limite résiduelle documentée :** La ligne `secret_bytes = bytes(raw_secret)` crée une
-copie immuable nécessaire aux appels des primitives. Cette copie reste en mémoire jusqu'au
-prochain cycle GC. `SecretBuffer` réduit significativement la fenêtre d'exposition mais ne
-peut pas l'éliminer entièrement sans modifier l'API des bibliothèques sous-jacentes.
+**Documented residual limitation:** The line `secret_bytes = bytes(raw_secret)`
+creates an immutable copy required for calls to the primitives. This copy remains
+in memory until the next GC cycle. `SecretBuffer` significantly reduces the
+exposure window but cannot eliminate it entirely without modifying the API of the
+underlying libraries.
 
 ---
 
-### FAILLE 3 — MAJEURE | Protection DoS par Allocation Mémoire Excessive
+### FLAW 3 — MAJOR | DoS Protection against Excessive Memory Allocation
 
-#### Vecteur d'Exploitation (v2.0.0)
+#### Exploitation Vector (v2.0.0)
 
-La méthode `CiphertextPackage.deserialize()` dans la version originale lisait la longueur
-déclarée de chaque chunk depuis les 4 octets gros-boutistes du flux binaire, puis allouait
-immédiatement cette quantité de mémoire sans vérification préalable :
+The `CiphertextPackage.deserialize()` method in the original version read the declared
+length of each chunk from the 4 big-endian bytes of the binary stream, then immediately
+allocated that amount of memory without any prior check:
 
 ```python
 def read_chunk() -> bytes:
@@ -288,26 +287,26 @@ def read_chunk() -> bytes:
     return chunk_data
 ```
 
-Un attaquant pouvait forger un paquet VOLT syntaxiquement valide (Magic `b'VOLT'` +
-Version `0x0200` corrects) mais déclarant un chunk `kem_ciphertext` de
-`4 294 967 295` octets (4 Go). Le système tentait d'allouer 4 Go de RAM avant de
-détecter toute anomalie, provoquant un crash OOM (Out of Memory) ou un gel du processus.
+An attacker could forge a syntactically valid VOLT packet (correct Magic `b'VOLT'` +
+Version `0x0200`) while declaring a `kem_ciphertext` chunk of `4,294,967,295` bytes
+(4 GB). The system would attempt to allocate 4 GB of RAM before detecting any anomaly,
+causing an OOM (Out of Memory) crash or a process freeze.
 
-#### Correction Implémentée (v2.1.0)
+#### Fix Implemented (v2.1.0)
 
-Introduction de constantes de bornage par type de chunk, définies au niveau module :
+Introduction of per-chunk-type bounding constants, defined at module level:
 
 ```python
-_MAX_PLAINTEXT_SIZE:  int = 64 * 1024 * 1024   # 64 Mo (limite opérationnelle)
-_MAX_KEM_CT_SIZE:     int = 2048                 # Kyber768 CT nominal : 1088 B
-_MAX_NONCE_SIZE:      int = 32                   # AES-GCM nonce : 12 B
-_MAX_AES_CT_SIZE:     int = _MAX_PLAINTEXT_SIZE  # égal à la limite plaintext
-_MAX_AES_TAG_SIZE:    int = 32                   # AES-GCM tag : 16 B
-_MAX_SIGNATURE_SIZE:  int = 8192                 # Dilithium3 sig : ~3293 B
-_MAX_SENDER_PK_SIZE:  int = 2048                 # Kyber768 PK : 1184 B
+_MAX_PLAINTEXT_SIZE:  int = 64 * 1024 * 1024   # 64 MB (operational limit)
+_MAX_KEM_CT_SIZE:     int = 2048                 # Kyber768 nominal CT: 1088 B
+_MAX_NONCE_SIZE:      int = 32                   # AES-GCM nonce: 12 B
+_MAX_AES_CT_SIZE:     int = _MAX_PLAINTEXT_SIZE  # equal to the plaintext limit
+_MAX_AES_TAG_SIZE:    int = 32                   # AES-GCM tag: 16 B
+_MAX_SIGNATURE_SIZE:  int = 8192                 # Dilithium3 sig: ~3293 B
+_MAX_SENDER_PK_SIZE:  int = 2048                 # Kyber768 PK: 1184 B
 ```
 
-La fonction interne `read_chunk()` vérifie la borne **avant toute allocation** :
+The internal `read_chunk()` function checks the bound **before any allocation**:
 
 ```python
 def read_chunk(max_size: int, field_name: str) -> bytes:
@@ -333,21 +332,21 @@ def read_chunk(max_size: int, field_name: str) -> bytes:
     return chunk_data
 ```
 
-La vérification `length > max_size` est effectuée après la lecture de la longueur déclarée
-mais **avant** tout accès à `data[offset:offset+length]`. Aucun octet de données n'est
-lu, aucune allocation n'est tentée. Le rejet est immédiat et à coût constant O(1).
+The `length > max_size` check is performed after reading the declared length but
+**before** any access to `data[offset:offset+length]`. No data byte is read, no
+allocation is attempted. Rejection is immediate and constant-cost O(1).
 
 ---
 
-### FAILLE 4 — MOYENNE | Validation des Types en Entrée
+### FLAW 4 — MEDIUM | Input Type Validation
 
-#### Vecteur d'Exploitation (v2.0.0)
+#### Exploitation Vector (v2.0.0)
 
-Les méthodes publiques `encrypt()`, `decrypt()`, et `generate_anchor_key()` n'effectuaient
-aucune validation des types de leurs arguments. Passer un `str` à la place de `bytes` pour
-`plaintext`, ou un `int` pour `recipient_kem_pk`, provoquait des erreurs Python internes
-tardives et cryptiques, parfois après que plusieurs étapes du pipeline cryptographique aient
-déjà été exécutées partiellement :
+The public methods `encrypt()`, `decrypt()` and `generate_anchor_key()` performed
+no validation of the types of their arguments. Passing a `str` instead of `bytes`
+for `plaintext`, or an `int` for `recipient_kem_pk`, caused late and cryptic internal
+Python errors, sometimes after several stages of the cryptographic pipeline had
+already partially executed:
 
 ```python
 # Comportement v2.0.0 avec plaintext invalide
@@ -360,10 +359,10 @@ engine.encrypt(
 # Message : TypeError cryptique, trace illisible pour l'intégrateur
 ```
 
-#### Correction Implémentée (v2.1.0)
+#### Fix Implemented (v2.1.0)
 
-Vérification `isinstance()` en début de chaque fonction publique, avant tout traitement,
-avec messages d'erreur explicites identifiant le paramètre problématique :
+`isinstance()` verification at the beginning of each public function, before any
+processing, with explicit error messages identifying the problematic parameter:
 
 ```python
 # Dans VOLTProtocolEngine.encrypt()
@@ -395,23 +394,23 @@ if not isinstance(data, (bytes, bytearray)):
     raise TypeError("deserialize attend un objet bytes ou bytearray.")
 ```
 
-Le rejet est effectué **avant l'entrée dans tout code cryptographique**, garantissant qu'une
-entrée malformée ne peut pas altérer l'état interne des primitives ou produire des erreurs
-dans des contextes imprévisibles.
+Rejection happens **before entering any cryptographic code**, guaranteeing that a
+malformed input cannot alter the internal state of the primitives or produce errors
+in unpredictable contexts.
 
 ---
 
-### FAILLE 5 — MINEURE | Durcissement de l'Anchor Key — Rejet Passphrase Vide
+### FLAW 5 — MINOR | Anchor Key Hardening — Empty Passphrase Rejection
 
-#### Vecteur d'Exploitation (v2.0.0)
+#### Exploitation Vector (v2.0.0)
 
-La fonction `generate_anchor_key()` acceptait silencieusement une passphrase vide `""` ou
-composée uniquement d'espaces `"   "`. Dans ce cas, PBKDF2-HMAC-SHA256 dérivait une
-Anchor Key déterministe depuis une entropie nulle côté passphrase. Tous les utilisateurs
-commettant cette erreur de configuration obtenaient **la même Anchor Key**, rendant la
-protection illusoire sans qu'aucun avertissement ne soit émis.
+The `generate_anchor_key()` function silently accepted an empty passphrase `""` or
+one consisting only of spaces `"   "`. In that case, PBKDF2-HMAC-SHA256 derived a
+deterministic Anchor Key from zero passphrase-side entropy. Every user making this
+configuration mistake obtained **the same Anchor Key**, rendering the protection
+illusory without any warning being issued.
 
-#### Correction Implémentée (v2.1.0)
+#### Fix Implemented (v2.1.0)
 
 ```python
 if not isinstance(passphrase, str):
@@ -423,7 +422,7 @@ if not passphrase.strip():
     )
 ```
 
-La validation des constantes SMGS est également renforcée :
+Validation of the SMGS constants is also hardened:
 
 ```python
 try:
@@ -437,42 +436,42 @@ except (TypeError, ValueError) as e:
 
 ---
 
-### Tableau Récapitulatif de l'Audit
+### Audit Summary Table
 
-| ID     | Sévérité     | Surface attaquée                        | Technique d'exploitation                     | Correction v2.1.0                          |
+| ID     | Severity     | Attacked surface                        | Exploitation technique                       | v2.1.0 fix                                 |
 | :----- | :----------- | :-------------------------------------- | :------------------------------------------- | :----------------------------------------- |
-| FIX-01 | **CRITIQUE** | Moteur cryptographique global           | Dépendance absente → fallback SHA256/XOR silencieux | `RuntimeError` au chargement + `VOLT_ALLOW_DEGRADED` opt-in |
-| FIX-02 | **CRITIQUE** | Mémoire volatile (RAM)                  | Forensique RAM, core dump, cold boot, swap   | `SecretBuffer` + `ctypes.memset()` zero-on-free |
-| FIX-03 | **MAJEURE**  | Désérialisation `CiphertextPackage`     | Paquet forgé → allocation O(4 Go) → OOM DoS | Bornes par chunk, rejet avant allocation   |
-| FIX-04 | **MOYENNE**  | Interfaces `encrypt()` / `decrypt()`   | Type invalide → erreur tardive dans primitives | `isinstance()` en entrée, `TypeError` explicite |
-| FIX-05 | **MINEURE**  | `generate_anchor_key()`                | Passphrase vide → Anchor Key partagée universellement | `ValueError` explicite avant dérivation |
+| FIX-01 | **CRITICAL** | Global cryptographic engine             | Missing dependency → silent SHA256/XOR fallback | `RuntimeError` at load + `VOLT_ALLOW_DEGRADED` opt-in |
+| FIX-02 | **CRITICAL** | Volatile memory (RAM)                   | RAM forensics, core dump, cold boot, swap    | `SecretBuffer` + `ctypes.memset()` zero-on-free |
+| FIX-03 | **MAJOR**    | `CiphertextPackage` deserialization     | Forged packet → O(4 GB) allocation → OOM DoS | Per-chunk bounds, rejection before allocation |
+| FIX-04 | **MEDIUM**   | `encrypt()` / `decrypt()` interfaces    | Invalid type → late error inside primitives  | `isinstance()` at input, explicit `TypeError` |
+| FIX-05 | **MINOR**    | `generate_anchor_key()`                 | Empty passphrase → universally shared Anchor Key | Explicit `ValueError` before derivation |
 
 ---
 
-## 2. Cartographie des Primitives NIST
+## 2. NIST Primitive Mapping
 
-### 2.1 Tableau Normatif Complet
+### 2.1 Complete Normative Table
 
-| Composant                | Algorithme     | Classe NIST | Standard Officiel             | Clé Publique  | Clé Privée    | Rôle précis dans VOLT v2                                                                 |
+| Component                | Algorithm      | NIST Class  | Official Standard             | Public Key    | Private Key   | Precise role in VOLT v2                                                                   |
 | :----------------------- | :------------- | :---------- | :---------------------------- | :------------ | :------------ | :--------------------------------------------------------------------------------------- |
-| **KEM**                  | Kyber768       | ML-KEM      | FIPS 203 (Draft 2024)         | 1 184 octets  | 2 400 octets  | Encapsulation post-quantique du secret partagé. Résistance prouvée aux attaques quantiques par la dureté du problème Module-LWE (Module Learning With Errors). Produit un `shared_secret` de 32 octets utilisé directement comme clé AES-256. |
-| **Signature Numérique**  | Dilithium3     | ML-DSA      | FIPS 204 (Draft 2024)         | 1 952 octets  | 4 016 octets  | Authentification de l'expéditeur et non-répudiation post-quantique. Signe le bloc interne assemblé : `MAGIC + VERSION + kem_ciphertext + aes_nonce + aes_ciphertext + aes_tag`. La signature couvre le ciphertext, jamais le plaintext. |
-| **Chiffrement Symétrique** | AES-256-GCM | AEAD        | FIPS 197 + SP 800-38D         | 256 bits (32 octets) | —       | Confidentialité des données avec authentification intégrée (AEAD). Nonce de 96 bits (12 octets) généré par `os.urandom(12)`. Tag d'authentification GCM de 128 bits (16 octets). La clé est le `shared_secret` Kyber768 ou son dérivé SHA256 si longueur incorrecte. |
-| **MAC / Intégrité**      | HMAC-SHA256    | MAC         | FIPS 198-1 + FIPS 180-4       | 256 bits (32 octets) | —       | Protection anti-altération de l'enveloppe complète. Couvre `payload_body + signature` avec `mac_key = SHA256(shared_secret)`. Comparaison en temps constant via `hmac.compare_digest()` — immunité totale aux attaques par oracle temporel. |
+| **KEM**                  | Kyber768       | ML-KEM      | FIPS 203 (Draft 2024)         | 1,184 bytes   | 2,400 bytes   | Post-quantum encapsulation of the shared secret. Proven resistance to quantum attacks through the hardness of the Module-LWE problem (Module Learning With Errors). Produces a 32-byte `shared_secret` used directly as the AES-256 key. |
+| **Digital Signature**    | Dilithium3     | ML-DSA      | FIPS 204 (Draft 2024)         | 1,952 bytes   | 4,016 bytes   | Sender authentication and post-quantum non-repudiation. Signs the assembled internal block: `MAGIC + VERSION + kem_ciphertext + aes_nonce + aes_ciphertext + aes_tag`. The signature covers the ciphertext, never the plaintext. |
+| **Symmetric Encryption** | AES-256-GCM    | AEAD        | FIPS 197 + SP 800-38D         | 256 bits (32 bytes) | —       | Data confidentiality with built-in authentication (AEAD). 96-bit (12-byte) nonce generated by `os.urandom(12)`. 128-bit (16-byte) GCM authentication tag. The key is the Kyber768 `shared_secret` or its SHA256 derivative if the length is incorrect. |
+| **MAC / Integrity**      | HMAC-SHA256    | MAC         | FIPS 198-1 + FIPS 180-4       | 256 bits (32 bytes) | —       | Anti-tampering protection of the complete envelope. Covers `payload_body + signature` with `mac_key = SHA256(shared_secret)`. Constant-time comparison via `hmac.compare_digest()` — total immunity to timing-oracle attacks. |
 
-### 2.2 Dépendances Système
+### 2.2 System Dependencies
 
-| Bibliothèque        | Rôle                                                       | Statut en mode production |
+| Library             | Role                                                       | Status in production mode |
 | :------------------ | :--------------------------------------------------------- | :------------------------ |
-| `liboqs-python`     | Binding Python pour Open Quantum Safe — Kyber768, Dilithium3 | **Obligatoire**           |
-| `cryptography`      | AES-256-GCM AEAD via OpenSSL                               | **Obligatoire**           |
-| `ctypes` (stdlib)   | `memset` pour effacement physique en RAM (`SecretBuffer`)  | Stdlib Python             |
-| `hashlib` (stdlib)  | PBKDF2-HMAC-SHA256 (Anchor Key), SHA256 (mac_key)         | Stdlib Python             |
-| `hmac` (stdlib)     | HMAC-SHA256 + `compare_digest` (protection timing)        | Stdlib Python             |
-| `struct` (stdlib)   | Encodage gros-boutiste `>I` pour le format Strict-Frame   | Stdlib Python             |
-| `os` (stdlib)       | `os.urandom()` pour nonces cryptographiquement sûrs       | Stdlib Python             |
+| `liboqs-python`     | Python binding for Open Quantum Safe — Kyber768, Dilithium3 | **Required**              |
+| `cryptography`      | AES-256-GCM AEAD via OpenSSL                               | **Required**              |
+| `ctypes` (stdlib)   | `memset` for physical RAM erasure (`SecretBuffer`)         | Python stdlib             |
+| `hashlib` (stdlib)  | PBKDF2-HMAC-SHA256 (Anchor Key), SHA256 (mac_key)          | Python stdlib             |
+| `hmac` (stdlib)     | HMAC-SHA256 + `compare_digest` (timing protection)         | Python stdlib             |
+| `struct` (stdlib)   | Big-endian `>I` encoding for the Strict-Frame format       | Python stdlib             |
+| `os` (stdlib)       | `os.urandom()` for cryptographically secure nonces         | Python stdlib             |
 
-**Installation (mode production) :**
+**Installation (production mode):**
 
 ```bash
 pip install cryptography liboqs-python --user --break-system-packages
@@ -480,21 +479,21 @@ pip install cryptography liboqs-python --user --break-system-packages
 
 ---
 
-## 3. Architecture Visuelle des Flux
+## 3. Visual Flow Architecture
 
-### 3.1 Pipeline de Chiffrement — Séquence `Encrypt-then-Sign-then-MAC`
+### 3.1 Encryption Pipeline — `Encrypt-then-Sign-then-MAC` Sequence
 
-La séquence **Encrypt → Sign → MAC** est non négociable dans son ordre. Inverser les
-opérations (ex. Sign-then-Encrypt) exposerait le plaintext à travers la signature ou
-permettrait des attaques par oracle de déchiffrement. La signature couvre le ciphertext
-(jamais le plaintext), préservant la confidentialité. Le HMAC couvre la totalité du payload
-signé, clôturant hermétiquement l'enveloppe contre toute altération post-signature.
-En v2.1.0, les secrets `shared_secret` et `mac_key` sont protégés par `SecretBuffer`
-et effacés via `ctypes.memset()` dès leur sortie de portée opérationnelle.
+The **Encrypt → Sign → MAC** sequence is non-negotiable in its order. Reversing the
+operations (e.g. Sign-then-Encrypt) would expose the plaintext through the signature or
+enable decryption-oracle attacks. The signature covers the ciphertext (never the
+plaintext), preserving confidentiality. The HMAC covers the entire signed payload,
+hermetically sealing the envelope against any post-signature tampering.
+In v2.1.0, the `shared_secret` and `mac_key` secrets are protected by `SecretBuffer`
+and erased via `ctypes.memset()` as soon as they leave their operational scope.
 
 ```mermaid
 sequenceDiagram
-    participant C as Expéditeur
+    participant C as Sender
     participant K as Kyber768 KEM
     participant SB1 as SecretBuffer(shared_secret)
     participant A as AES-256-GCM
@@ -503,16 +502,16 @@ sequenceDiagram
     participant H as HMAC-SHA256
     participant P as CiphertextPackage
 
-    Note over C: Entrées validées :<br/>isinstance() sur tous les args (FIX-04)<br/>len(plaintext) ≤ 64 Mo
+    Note over C: Validated inputs:<br/>isinstance() on all args (FIX-04)<br/>len(plaintext) ≤ 64 MB
 
     C->>K: encapsulate(recipient_kem_pk)
     K-->>C: EncapsulationResult {<br/>  kem_ciphertext (~1088 B),<br/>  shared_secret (32 B)<br/>}
 
     C->>SB1: SecretBuffer(shared_secret).__enter__()
-    Note over SB1: shared_secret isolé en bytearray mutable<br/>Effacement ctypes.memset() garanti à la sortie (FIX-02)
+    Note over SB1: shared_secret isolated in mutable bytearray<br/>ctypes.memset() erasure guaranteed on exit (FIX-02)
 
     SB1->>A: encrypt(plaintext, bytes(shared_secret))
-    A-->>SB1: aes_nonce (12 B, os.urandom)<br/>aes_ciphertext (N octets)<br/>aes_tag (16 B)
+    A-->>SB1: aes_nonce (12 B, os.urandom)<br/>aes_ciphertext (N bytes)<br/>aes_tag (16 B)
 
     Note over SB1: payload_body =<br/>b'VOLT' + VERSION(0x0200) +<br/>kem_ciphertext + aes_nonce +<br/>aes_ciphertext + aes_tag
 
@@ -522,7 +521,7 @@ sequenceDiagram
     Note over SB1: mac_key = SHA256(shared_secret)<br/>full_payload = payload_body + signature
 
     SB1->>SB2: SecretBuffer(mac_key).__enter__()
-    Note over SB2: mac_key isolé — effacement garanti (FIX-02)
+    Note over SB2: mac_key isolated — erasure guaranteed (FIX-02)
 
     SB2->>H: compute(full_payload, mac_key)
     H-->>SB2: hmac_value (32 B)
@@ -531,22 +530,22 @@ sequenceDiagram
     SB1-->>C: __exit__() → ctypes.memset(shared_secret, 0)
 
     C->>P: CiphertextPackage(<br/>  kem_ciphertext, aes_nonce,<br/>  aes_ciphertext, aes_tag,<br/>  signature, hmac_value,<br/>  sender_kem_pk<br/>)
-    P-->>C: serialize() → flux binaire Strict-Frame
+    P-->>C: serialize() → Strict-Frame binary stream
 ```
 
-### 3.2 Pipeline de Déchiffrement — Logique Étanche `Fail-Fast`
+### 3.2 Decryption Pipeline — Watertight `Fail-Fast` Logic
 
-Le déchiffrement applique une validation **strictement séquentielle et sans état partiel**.
-Aucune donnée chiffrée n'est décodée avant que le HMAC et la signature Dilithium3 aient
-été intégralement vérifiés. Cette contrainte d'ordre élimine les oracles de déchiffrement :
-un attaquant ne peut jamais obtenir de feedback sur le contenu d'un paquet altéré.
-En cas de rupture à n'importe quel point de la chaîne, un `ValueError` est levé
-immédiatement, les secrets en cours sont effacés par `SecretBuffer.__exit__()`, et aucune
-donnée partielle n'est retournée à l'appelant.
+Decryption applies **strictly sequential validation with no partial state**. No
+encrypted data is decoded before the HMAC and the Dilithium3 signature have been
+fully verified. This ordering constraint eliminates decryption oracles: an attacker
+can never obtain feedback on the content of a tampered packet.
+If any check fails at any point of the chain, a `ValueError` is raised
+immediately, in-flight secrets are erased by `SecretBuffer.__exit__()`, and no
+partial data is returned to the caller.
 
 ```mermaid
 sequenceDiagram
-    participant R as Récepteur
+    participant R as Receiver
     participant DSZ as deserialize()
     participant K as Kyber768 KEM
     participant SB1 as SecretBuffer(shared_secret)
@@ -555,110 +554,110 @@ sequenceDiagram
     participant S as Dilithium3 verify
     participant A as AES-256-GCM decrypt
 
-    Note over R: buffer binaire brut
+    Note over R: raw binary buffer
 
     R->>DSZ: CiphertextPackage.deserialize(buffer)
 
-    Note over DSZ: [1] isinstance(data, bytes/bytearray) (FIX-04)<br/>[2] len(data) ≥ 8<br/>[3] data[:4] == b'VOLT'<br/>[4] version[0] == 0x0200<br/>[5] Chaque chunk : longueur ≤ max_size AVANT allocation (FIX-03)<br/>[6] Bornes offset sur chaque chunk<br/>[7] Présence HMAC 32 B
+    Note over DSZ: [1] isinstance(data, bytes/bytearray) (FIX-04)<br/>[2] len(data) ≥ 8<br/>[3] data[:4] == b'VOLT'<br/>[4] version[0] == 0x0200<br/>[5] Each chunk: length ≤ max_size BEFORE allocation (FIX-03)<br/>[6] Offset bounds on each chunk<br/>[7] Presence of 32 B HMAC
 
-    alt Contrôle échoué (type / magic / version / taille / borne)
-        DSZ-->>R: ValueError descriptif — rejet immédiat<br/>Aucune allocation. Aucune primitive appelée.
+    alt Check failed (type / magic / version / size / bound)
+        DSZ-->>R: descriptive ValueError — immediate rejection<br/>No allocation. No primitive called.
     end
 
-    DSZ-->>R: CiphertextPackage reconstruit
+    DSZ-->>R: CiphertextPackage rebuilt
 
     R->>K: decapsulate(kem_ciphertext, recipient_kem_sk)
     K-->>R: shared_secret (32 B)
 
     R->>SB1: SecretBuffer(shared_secret).__enter__()
-    Note over SB1: Effacement ctypes.memset() garanti à la sortie
+    Note over SB1: ctypes.memset() erasure guaranteed on exit
 
-    Note over SB1: payload_body reconstruit :<br/>b'VOLT' + VERSION + kem_ciphertext +<br/>aes_nonce + aes_ciphertext + aes_tag<br/>full_payload = payload_body + signature
+    Note over SB1: payload_body rebuilt:<br/>b'VOLT' + VERSION + kem_ciphertext +<br/>aes_nonce + aes_ciphertext + aes_tag<br/>full_payload = payload_body + signature
 
     SB1->>SB2: SecretBuffer(SHA256(shared_secret)).__enter__()
 
     SB2->>H: verify(full_payload, hmac_value, mac_key)
 
-    alt HMAC invalide — paquet altéré
+    alt Invalid HMAC — tampered packet
         H-->>R: ValueError<br/>"RUPTURE DE SÉCURITÉ CRITIQUE :<br/>Signature de contrôle HMAC invalide. Paquet altéré."
         Note over SB2: SB2.__exit__() → ctypes.memset(mac_key, 0)
         Note over SB1: SB1.__exit__() → ctypes.memset(shared_secret, 0)
-        Note over R: Arrêt total. Aucune donnée extraite.<br/>Aucun oracle exploitable.
+        Note over R: Full stop. No data extracted.<br/>No exploitable oracle.
     end
 
     SB2-->>SB1: __exit__() → ctypes.memset(mac_key, 0)
-    H-->>R: HMAC OK — enveloppe intègre
+    H-->>R: HMAC OK — envelope intact
 
     SB1->>S: verify(payload_body, signature, sender_sign_pk)
 
-    alt Signature Dilithium3 invalide — identité non authentifiée
+    alt Invalid Dilithium3 signature — unauthenticated identity
         S-->>R: ValueError<br/>"RUPTURE DE SÉCURITÉ CRITIQUE :<br/>Signature post-quantique Dilithium3 invalide ou usurpée."
         Note over SB1: SB1.__exit__() → ctypes.memset(shared_secret, 0)
-        Note over R: Arrêt total. Expéditeur non authentifié.<br/>Aucune donnée extraite.
+        Note over R: Full stop. Sender not authenticated.<br/>No data extracted.
     end
 
-    S-->>R: Signature OK — expéditeur authentifié
+    S-->>R: Signature OK — sender authenticated
 
     SB1->>A: decrypt(aes_nonce, aes_ciphertext, aes_tag, shared_secret)
-    A-->>SB1: plaintext original
+    A-->>SB1: original plaintext
 
     SB1-->>R: __exit__() → ctypes.memset(shared_secret, 0)
 
-    Note over R: plaintext livré uniquement après<br/>triple validation réussie :<br/>deserialize → HMAC → Dilithium3 → AES
+    Note over R: plaintext delivered only after<br/>successful triple validation:<br/>deserialize → HMAC → Dilithium3 → AES
 ```
 
 ---
 
-## 4. Architecture de l'Anchor Key System
+## 4. Anchor Key System Architecture
 
-### 4.1 Problème Dimensionnel des Clés Post-Quantiques
+### 4.1 The Dimensional Problem of Post-Quantum Keys
 
-Les primitives NIST de niveau 3 (sécurité équivalente AES-192) produisent des artefacts de
-taille prohibitive pour toute interface utilisateur classique :
+The NIST level-3 primitives (security equivalent to AES-192) produce artifacts of a
+size prohibitive for any conventional user interface:
 
-| Artefact                    | Taille exacte   | Représentation hexadécimale | Compatibilité QR Code standard |
+| Artifact                    | Exact size      | Hexadecimal representation  | Standard QR Code compatibility |
 | :-------------------------- | :-------------- | :-------------------------- | :----------------------------- |
-| Clé publique Kyber768        | 1 184 octets    | 2 368 caractères            | Impossible (saturation > 200 chars) |
-| Clé privée Kyber768          | 2 400 octets    | 4 800 caractères            | Impossible                     |
-| Signature Dilithium3         | ~3 293 octets   | ~6 586 caractères           | Impossible                     |
-| Clé publique Dilithium3      | 1 952 octets    | 3 904 caractères            | Impossible                     |
-| **Anchor Key (solution)**    | **24 octets**   | **48 caractères**           | **Trivial — compatible**        |
+| Kyber768 public key         | 1,184 bytes     | 2,368 characters            | Impossible (saturation > 200 chars) |
+| Kyber768 private key        | 2,400 bytes     | 4,800 characters            | Impossible                     |
+| Dilithium3 signature        | ~3,293 bytes    | ~6,586 characters           | Impossible                     |
+| Dilithium3 public key       | 1,952 bytes     | 3,904 characters            | Impossible                     |
+| **Anchor Key (solution)**   | **24 bytes**    | **48 characters**           | **Trivial — compatible**       |
 
-### 4.2 Définition Formelle de l'Anchor Key
+### 4.2 Formal Definition of the Anchor Key
 
-L'Anchor Key est une empreinte de **48 caractères hexadécimaux majuscules (24 octets)**
-dérivée de manière déterministe et irréversible selon la fonction suivante :
+The Anchor Key is a fingerprint of **48 uppercase hexadecimal characters (24 bytes)**
+derived deterministically and irreversibly according to the following function:
 
 ```
 AnchorKey(passphrase, δ_F, D_eff) =
     PBKDF2-HMAC-SHA256(
         password = UTF8(passphrase),
         salt     = UTF8("RATISS:SMGS_CALIBRATION:delta_f={δ_F:.6f}:d_eff={D_eff:.6f}"),
-        c        = 10 000,
+        c        = 10,000,
         dkLen    = 24
     ).hex().upper()
 ```
 
-Où :
-- `δ_F = 4.669201` — Constante de Feigenbaum delta, issue de la théorie du chaos,
-  caractérisant le rapport de convergence des bifurcations dans les systèmes dynamiques
-  unidimensionnels. Adoptée comme constante de calibration dans le domaine SMGS de
-  RATISS pour sa nature universelle et déterministe.
-- `D_eff = 1.584962` — Dimension effective SMGS, valeur propre au référentiel
-  morphologique de RATISS Labs, encodée avec une précision de 6 décimales.
+Where:
+- `δ_F = 4.669201` — The Feigenbaum delta constant, from chaos theory,
+  characterizing the convergence ratio of bifurcations in one-dimensional dynamical
+  systems. Adopted as the calibration constant in the RATISS SMGS domain for its
+  universal and deterministic nature.
+- `D_eff = 1.584962` — SMGS effective dimension, a value specific to the
+  morphological frame of reference of RATISS Labs, encoded with 6-decimal precision.
 
-### 4.3 Propriétés Mathématiques et Sémantiques
+### 4.3 Mathematical and Semantic Properties
 
-| Propriété                        | Garantie formelle                                                                                           |
+| Property                         | Formal guarantee                                                                                            |
 | :------------------------------- | :---------------------------------------------------------------------------------------------------------- |
-| **Déterminisme absolu**          | `AnchorKey(p, δ_F, D_eff) = AnchorKey(p, δ_F, D_eff)` — Même triplet → même empreinte, sur toute machine, sans état partagé. |
-| **Sensibilité au sel physique**  | Une variation de `D_eff` de `1.584962` à `1.580000` produit une empreinte entièrement différente sans corrélation statistique détectable. |
-| **Irréversibilité**              | PBKDF2 avec `c = 10 000` itérations. La reconstruction de la passphrase depuis l'Anchor Key est computationnellement prohibitive avec le matériel actuel. |
-| **Rejet passphrase vide** *(v2.1.0)* | `passphrase.strip() == ""` → `ValueError` avant toute dérivation. Bloque les empreintes d'entropie nulle. |
-| **Validation des constantes** *(v2.1.0)* | Conversion `float()` avec gestion d'exception. Constante non-numérique → `ValueError` avec message explicite. |
-| **Unicité d'interface**          | Seule l'Anchor Key de 48 caractères est exposée à l'utilisateur. Les clés NIST (1 184 B, 1 952 B) ne quittent jamais la RAM volatile. |
+| **Absolute determinism**         | `AnchorKey(p, δ_F, D_eff) = AnchorKey(p, δ_F, D_eff)` — Same triple → same fingerprint, on any machine, with no shared state. |
+| **Physical salt sensitivity**    | A change of `D_eff` from `1.584962` to `1.580000` produces an entirely different fingerprint with no detectable statistical correlation. |
+| **Irreversibility**              | PBKDF2 with `c = 10,000` iterations. Reconstructing the passphrase from the Anchor Key is computationally prohibitive with current hardware. |
+| **Empty passphrase rejection** *(v2.1.0)* | `passphrase.strip() == ""` → `ValueError` before any derivation. Blocks zero-entropy fingerprints. |
+| **Constant validation** *(v2.1.0)* | `float()` conversion with exception handling. Non-numeric constant → `ValueError` with an explicit message. |
+| **Interface uniqueness**         | Only the 48-character Anchor Key is exposed to the user. The NIST keys (1,184 B, 1,952 B) never leave volatile RAM. |
 
-### 4.4 Code Source de Référence Complet
+### 4.4 Complete Reference Source Code
 
 ```python
 def generate_anchor_key(passphrase: str, smgs_constants: dict) -> str:
@@ -702,17 +701,17 @@ def generate_anchor_key(passphrase: str, smgs_constants: dict) -> str:
 
 ---
 
-## 5. Structure Binaire Strict-Frame
+## 5. Strict-Frame Binary Structure
 
-### 5.1 Vue d'Ensemble du Format
+### 5.1 Format Overview
 
-Le `CiphertextPackage` est sérialisé dans un format binaire compact, auto-descriptif et
-validable sans état externe. Chaque segment de longueur variable est précédé d'un entête
-de longueur encodé en gros-boutiste non-signé sur 4 octets (`struct.pack('>I', length)`).
-La valeur HMAC est la seule exception : sa taille est fixe et connue (32 octets), elle est
-donc écrite directement sans préfixe de longueur.
+The `CiphertextPackage` is serialized into a compact, self-describing binary format
+that can be validated without any external state. Each variable-length segment is
+preceded by a length header encoded as an unsigned big-endian 4-byte integer
+(`struct.pack('>I', length)`). The HMAC value is the only exception: its size is
+fixed and known (32 bytes), so it is written directly without a length prefix.
 
-### 5.2 Plan d'Implantation Exact des Octets
+### 5.2 Exact Byte Layout
 
 ```
 Offset (B)    Taille          Champ                Encodage / Contrainte
@@ -767,7 +766,7 @@ Offset (B)    Taille          Champ                Encodage / Contrainte
 ─────────────────────────────────────────────────────────────────────────────────
 ```
 
-### 5.3 Représentation Linéaire Compact
+### 5.3 Compact Linear Representation
 
 ```
 [b'VOLT':4B] [0x02000000:4B]
@@ -776,44 +775,44 @@ Offset (B)    Taille          Champ                Encodage / Contrainte
 [len(aes_ciphertext):4B>I] [aes_ciphertext:≤64MB]
 [len(aes_tag):4B>I]        [aes_tag:16B]
 [len(signature):4B>I]      [signature:≤8192B]
-[hmac_value:32B — FIXE, sans préfixe LEN]
+mac_value:32B — FIXED, no LEN prefix]
 [len(sender_public_key):4B>I] [sender_public_key:≤2048B]
 ```
 
-### 5.4 Taille Totale Estimée (plaintext de 64 octets)
+### 5.4 Estimated Total Size (64-byte plaintext)
 
-| Segment               | Entête (B) | Données (B)  | Total (B)    |
+| Segment               | Header (B) | Data (B)     | Total (B)    |
 | :-------------------- | :--------- | :----------- | :----------- |
 | MAGIC + VERSION       | —          | 8            | 8            |
-| KEM_CIPHERTEXT        | 4          | 1 088        | 1 092        |
+| KEM_CIPHERTEXT        | 4          | 1,088        | 1,092        |
 | AES_NONCE             | 4          | 12           | 16           |
 | AES_CIPHERTEXT        | 4          | ~64          | ~68          |
 | AES_TAG               | 4          | 16           | 20           |
-| SIGNATURE             | 4          | ~3 293       | ~3 297       |
+| SIGNATURE             | 4          | ~3,293       | ~3,297       |
 | HMAC_VALUE            | 0          | 32           | 32           |
-| SENDER_PUBLIC_KEY     | 4          | 1 184        | 1 188        |
-| **TOTAL ESTIMÉ**      |            |              | **~5 721 B** |
+| SENDER_PUBLIC_KEY     | 4          | 1,184        | 1,188        |
+| **ESTIMATED TOTAL**   |            |              | **~5,721 B** |
 
-### 5.5 Séquence de Désérialisation et Contrôles (v2.1.0)
+### 5.5 Deserialization Sequence and Checks (v2.1.0)
 
-La méthode `CiphertextPackage.deserialize()` applique les contrôles suivants dans l'ordre
-strict, sans exception possible dans l'ordre :
+The `CiphertextPackage.deserialize()` method applies the following checks in strict
+order, with no possible deviation from that order:
 
-1. `isinstance(data, (bytes, bytearray))` → `TypeError` si non-conforme. *(FIX-04)*
-2. `len(data) < 8` → `ValueError("Dimensions binaires insuffisantes")`
-3. `data[:4] != b'VOLT'` → `ValueError` avec octets reçus en clair
-4. `struct.unpack('>HH', data[4:8])[0] != 0x0200` → `ValueError` avec code reçu
-5. Pour chaque chunk : `offset + 4 > len(data)` → `ValueError` avec nom du champ
-6. Pour chaque chunk : `length > max_size` → `ValueError` **avant toute allocation** *(FIX-03)*
-7. Pour chaque chunk : `offset + length > len(data)` → `ValueError` avec bytecounts détaillés
-8. `offset + 32 > len(data)` → `ValueError("HMAC manquant ou tronqué")`
-9. `struct.error` → capturé et converti en `ValueError` descriptif
+1. `isinstance(data, (bytes, bytearray))` → `TypeError` if non-compliant. *(FIX-04)*
+2. `len(data) < 8` → `ValueError("Insufficient binary dimensions")`
+3. `data[:4] != b'VOLT'` → `ValueError` with the received bytes shown in clear
+4. `struct.unpack('>HH', data[4:8])[0] != 0x0200` → `ValueError` with the received code
+5. For each chunk: `offset + 4 > len(data)` → `ValueError` with the field name
+6. For each chunk: `length > max_size` → `ValueError` **before any allocation** *(FIX-03)*
+7. For each chunk: `offset + length > len(data)` → `ValueError` with detailed byte counts
+8. `offset + 32 > len(data)` → `ValueError("Missing or truncated HMAC")`
+9. `struct.error` → caught and converted into a descriptive `ValueError`
 
 ---
 
-## 6. Guide d'Intégration et Exemple Prêt à l'Emploi
+## 6. Integration Guide and Ready-to-Use Example
 
-### 6.1 Prérequis d'Environnement
+### 6.1 Environment Prerequisites
 
 ```bash
 # Installation des dépendances obligatoires (mode production)
@@ -823,10 +822,10 @@ pip install cryptography liboqs-python --user --break-system-packages
 python3 -c "import oqs; from cryptography.hazmat.primitives.ciphers.aead import AESGCM; print('OK')"
 ```
 
-> En l'absence de `liboqs-python` ou `cryptography`, l'import de `volt_v2_production`
-> lève un `RuntimeError` immédiat. Aucune opération cryptographique ne peut être tentée.
+> In the absence of `liboqs-python` or `cryptography`, importing `volt_v2_production`
+> raises an immediate `RuntimeError`. No cryptographic operation can even be attempted.
 
-### 6.2 Script d'Intégration Complet — Cycle Cryptographique v2.1.0-hardened
+### 6.2 Complete Integration Script — v2.1.0-hardened Cryptographic Cycle
 
 ```python
 #!/usr/bin/env python3
@@ -1068,7 +1067,7 @@ except ValueError as e:
     print(f"[PASS] Attaque DoS bloquée avant allocation : {e}")
 ```
 
-### 6.3 Exécution de la Suite de Certification Intégrée
+### 6.3 Running the Built-in Certification Suite
 
 ```python
 from volt_v2_production import run_production_tests
@@ -1076,7 +1075,7 @@ from volt_v2_production import run_production_tests
 success = run_production_tests()
 ```
 
-**Résultat attendu en environnement sain (6/6 tests) :**
+**Expected output in a healthy environment (6/6 tests):**
 
 ```
 [INIT] Lancement de la suite de certification VOLT v2 (v2.1.0-hardened)...
@@ -1091,49 +1090,48 @@ success = run_production_tests()
 
 ---
 
-## Périmètre de Sécurité et Limites Résiduelles
+## Security Scope and Residual Limitations
 
-### Ce que VOLT v2.1.0-hardened Sécurise
+### What VOLT v2.1.0-hardened Secures
 
-| Surface                                              | Mécanisme actif                                             |
+| Surface                                              | Active mechanism                                             |
 | :--------------------------------------------------- | :---------------------------------------------------------- |
-| Données au repos (fichiers `.bin` locaux)            | AES-256-GCM + HMAC-SHA256 avant écriture disque            |
-| Persistance cognitive RATISS (synapses, historiques) | Enveloppe chiffrée complète CiphertextPackage               |
-| Secrets en mémoire volatile                          | `SecretBuffer` + `ctypes.memset()` — effacement zero-on-free |
-| Mode dégradé non-sécurisé                            | Bloqué par défaut — `RuntimeError` si dépendance absente    |
-| Paquets DoS surdimensionnés                          | Rejet avant allocation mémoire — borne par chunk            |
-| Injections de types invalides                        | `isinstance()` en entrée de chaque fonction publique        |
-| Attaques par oracle de déchiffrement                 | HMAC vérifié en premier — aucun déchiffrement avant validation |
-| Attaques temporelles sur MAC                         | `hmac.compare_digest()` — comparaison en temps constant     |
-| Résistance aux adversaires quantiques                | Kyber768 (ML-KEM) + Dilithium3 (ML-DSA) — résistants à l'algorithme de Shor |
+| Data at rest (local `.bin` files)                    | AES-256-GCM + HMAC-SHA256 before disk write                 |
+| RATISS cognitive persistence (synapses, histories)   | Complete encrypted CiphertextPackage envelope               |
+| Secrets in volatile memory                           | `SecretBuffer` + `ctypes.memset()` — zero-on-free erasure   |
+| Non-secure degraded mode                             | Blocked by default — `RuntimeError` if dependency missing   |
+| Oversized DoS packets                                | Rejection before memory allocation — per-chunk bound        |
+| Invalid type injections                              | `isinstance()` at the input of each public function         |
+| Decryption-oracle attacks                            | HMAC verified first — no decryption before validation       |
+| Timing attacks on the MAC                            | `hmac.compare_digest()` — constant-time comparison          |
+| Resistance to quantum adversaries                    | Kyber768 (ML-KEM) + Dilithium3 (ML-DSA) — resistant to Shor's algorithm |
 
-### Limites Résiduelles Non Couvertes
+### Uncovered Residual Limitations
 
-| Surface                                              | Nature de l'exposition résiduelle                           |
+| Surface                                              | Nature of the residual exposure                             |
 | :--------------------------------------------------- | :---------------------------------------------------------- |
-| Transport réseau vers API cloud                      | TLS classique uniquement — vulnérable aux attaques "Harvest Now, Decrypt Later" |
-| Copie `bytes()` issue de `SecretBuffer`             | Copie immuable en RAM jusqu'au GC Python — fenêtre réduite, non éliminée |
-| Swap OS sans FDE                                     | Pages swappées avant effacement `SecretBuffer` — hors périmètre VOLT |
-| Canaux auxiliaires (timing/power) sur hardware dédié | liboqs non certifié temps-constant sur toutes architectures |
-| Distribution des clés publiques (PKI)               | La validité de `sender_sign_pk` doit être établie par un mécanisme externe |
+| Network transport to cloud APIs                      | Classical TLS only — vulnerable to "Harvest Now, Decrypt Later" attacks |
+| `bytes()` copy from `SecretBuffer`                   | Immutable copy in RAM until Python GC — reduced window, not eliminated |
+| OS swap without FDE                                  | Pages swapped before `SecretBuffer` erasure — outside VOLT scope |
+| Auxiliary channels (timing/power) on dedicated hardware | liboqs not certified constant-time on all architectures  |
+| Public key distribution (PKI)                        | The validity of `sender_sign_pk` must be established by an external mechanism |
 
-### Posture Épistémologique Officielle
+### Official Epistemological Position
 
-> *"Le présent protocole constitue une implémentation de référence conforme aux standards
-> NIST 2024 (FIPS 203, FIPS 204, FIPS 197, SP 800-38D, FIPS 198-1), renforcée en
-> v2.1.0 contre les modes dégradés non-sécurisés, l'exposition mémoire des secrets, les
-> attaques par allocation mémoire excessive, les injections de types invalides et les
-> passphrases à entropie nulle. Sa pertinence opérationnelle dans des environnements
-> contraints devra être évaluée indépendamment par audits formels de sécurité et tests de
-> pénétration conduits par des laboratoires certifiés. L'implémentation n'a pas été soumise
-> à certification FIPS 140-3 et ne doit pas être utilisée dans des contextes l'exigeant
-> sans validation préalable."*
+> *"This protocol constitutes a reference implementation compliant with the NIST 2024
+> standards (FIPS 203, FIPS 204, FIPS 197, SP 800-38D, FIPS 198-1), hardened in
+> v2.1.0 against non-secure degraded modes, memory exposure of secrets, excessive
+> memory-allocation attacks, invalid type injections and zero-entropy passphrases. Its
+> operational relevance in constrained environments shall be assessed independently
+> through formal security audits and penetration tests conducted by certified
+> laboratories. The implementation has not been submitted for FIPS 140-3 certification
+> and must not be used in contexts requiring it without prior validation."*
 
 ---
 
-*Spécification finale produite pour VOLT v2.1.0-hardened.*
-*Toute divergence entre ce document et le code source `volt_v2_production.py` doit être
-signalée comme bug prioritaire auprès de Jonathan Evina (Sama) — RATISS LABS.*
+*Final specification produced for VOLT v2.1.0-hardened.*
+*Any divergence between this document and the `volt_v2_production.py` source code must be
+reported as a priority bug to Jonathan Evina (Sama) — RATISS LABS.*
 
-*Document classifié : Usage interne RATISS LABS et partenaires autorisés.*
-*Distribué sous Apache License 2.0 — Conserver cette notice dans toute redistribution.*
+*Classified document: for RATISS LABS internal use and authorized partners.*
+*Distributed under the Apache License 2.0 — Keep this notice in any redistribution.*
